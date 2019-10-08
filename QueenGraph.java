@@ -167,7 +167,9 @@ class QueenGraph {
 				}
 			}
 		}
-		
+
+		System.out.println("There is no working assignment for size " + n + "x" + n + " board");
+		return false;
 	}
 }
 
