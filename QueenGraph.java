@@ -17,7 +17,6 @@ class QueenGraph {
 			for(j = 0; j < n; j++)
 				board[i][j] = true;
 			queens.add(new Queen(n, i));
-			queens.get(i).printDomain();
 		}
 	}
 
@@ -41,6 +40,21 @@ class QueenGraph {
 			Queen q = queens.get(i);
 			System.out.println("Queen " + i + " at position: (" + q.xPosition + ", " + q.yPosition + ")");
 		}
+		System.out.println();
+	}
+
+	public void printFailure() {
+		int i;
+		System.out.println("There is no solution for config:");
+		for(i = 0; i < unassignedIndex; i++)
+		{
+			Queen q = queens.get(i);
+			System.out.println("Queen " + i + " at position: (" + q.xPosition + ", " + q.yPosition + ")");
+		}
+		System.out.println();
+
+		unassignedIndex = 1;
+		this.resetDomains();
 	}
 
 	public void inference(Queen q) {
@@ -57,7 +71,7 @@ class QueenGraph {
 			
 			while(i < size)
 			{
-				if(nq.domain.get(i).getKey() == row || nq.domain.get(i).getValue() == col)
+				if(nq.domain.get(i).getKey() == row)
 				{
 					nq.domain.remove(i);
 					size--;
@@ -144,19 +158,46 @@ class QueenGraph {
 		return true;
 	}
 
+	public void resetDomains() {
+		int i, j;
+		for(i = unassignedIndex; i < n; i++)
+		{
+			Queen q = queens.get(i);
+			q.domain.clear();
+			for(j = 0; j < n; j++)
+			{
+				q.domain.add(new AbstractMap.SimpleEntry<>(j, i));
+			}
+		}
+
+		for(i = 0; i < unassignedIndex - 1; i++) 
+		{
+			Queen q = queens.get(i);
+			this.inference(q);
+		}
+	}
+
 	public boolean forwardChecking() {
+		int i, j, size;
+		boolean allAssigned = false;
+		System.out.println("In forwardChecking call with unassignedIndex: " + unassignedIndex + ". Here are the domains");
+		for(i = 0; i < n; i++)
+		{
+			Queen q = queens.get(i);
+			System.out.println("Queen " + i + " with xPosition: " + q.xPosition);
+			q.printDomain();
+		}
 		if(this.isComplete()) {
 			return true;
 		}
 
-		int i, size;
 		boolean result;
 
 		Queen q = queens.get(unassignedIndex++);
 		size = q.domain.size();
 		for(i = 0; i < size; i++)
 		{
-			q.setPositionX(i);
+			q.setPositionX(q.domain.get(i).getKey());
 			this.inference(q);
 			if(this.noFailure())
 			{
@@ -164,10 +205,17 @@ class QueenGraph {
 				if(result)
 				{
 					this.printSolution();
+					allAssigned = true;
 				}
 			}
+			else
+			{
+				System.out.println("Failed on instance of queen " + q.yPosition + " with xPosition: " + q.xPosition);
+				this.resetDomains();
+			}
 		}
-		
+		this.printFailure();
+		return false;
 	}
 }
 
