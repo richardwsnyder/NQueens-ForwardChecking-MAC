@@ -1,293 +1,258 @@
 import java.util.*;
 
 class QueenGraph {
-	int n;
-	boolean[][] board;
-	ArrayList<Queen> queens;
-	int unassignedIndex;
+    int n;
+    ArrayList<Queen> queens;
+    ArrayList<ArrayList<Integer>> solutions;
+    int unassignedIndex;
 
-	public QueenGraph(int numQueens) {
-		n = numQueens;
-		unassignedIndex = 0;
-		board = new boolean[n][n];
-		queens = new ArrayList<>();
-		int i, j;
-		for(i = 0; i < n; i++)
-		{
-			for(j = 0; j < n; j++)
-				board[i][j] = true;
-			queens.add(new Queen(n, i));
-		}
-	}
+    public QueenGraph(int numQueens) {
+        n = numQueens;
+        unassignedIndex = 0;
+        queens = new ArrayList<>();
+        solutions = new ArrayList<>();
 
-	public boolean isComplete() {
-		int i, j;
-		for(i = 0; i < n; i++) 
-		{
-			Queen q = queens.get(i);
-			if(q.xPosition == Integer.MAX_VALUE)
-				return false;
-		}
+        int i;
+        for(i = 0; i < numQueens; i++)
+            queens.add(new Queen(n, i));
+    }
 
-		return true;
-	}
+    private void inference(Queen q) {
+        int row = q.xPosition;
+        int col = q.yPosition;
+        System.out.println("inferencing domains after assigning queen " + q.yPosition + " to position (" + row + ", " + col + ")");
+        System.out.println("This is unassignedIndex: " + unassignedIndex);
 
-	public void printSolution() {
-		int i;
-		System.out.println("Found a solution with assignments:");
-		for(i = 0; i < n; i++)
-		{	
-			Queen q = queens.get(i);
-			System.out.println("Queen " + i + " at position: (" + q.xPosition + ", " + q.yPosition + ")");
-		}
-		System.out.println();
-	}
+        int nextQueen;
+        int i;
 
-	public void printFailure() {
-		int i;
-		System.out.println("There is no solution for config:");
-		for(i = 0; i < unassignedIndex; i++)
-		{
-			Queen q = queens.get(i);
-			System.out.println("Queen " + i + " at position: (" + q.xPosition + ", " + q.yPosition + ")");
-		}
-		System.out.println();
+        for(nextQueen = unassignedIndex; nextQueen < n; nextQueen++)
+        {
+            Queen nq = queens.get(nextQueen);
+            int size = nq.domain.size();
+            i = 0;
+            while(i < size)
+            {
+                if(nq.domain.get(i).getKey() == row)
+                {
+                    nq.domain.remove(i);
+                    size--;
+                }
+                else
+                    i++;
+            }
+        }
+        for(i = 0; i < n; i++)
+        {
+            Queen nq = queens.get(i);
+            System.out.println("This is Queen " + i + "'s domain after getting rid of same row");
+            nq.printDomain();
+        }
 
-		unassignedIndex = 1;
-		this.resetDomains();
-	}
+        if(row + 1 < n && col + 1 < n)
+        {
+            int xCo = row + 1;
+            int yCo = col + 1;
+            for(nextQueen = unassignedIndex; nextQueen < n; nextQueen++)
+            {
+                Queen nq = queens.get(nextQueen);
+                while(yCo != nq.yPosition)
+                {
+                    xCo++;
+                    yCo++;
+                }
+                int size = nq.domain.size();
+                i = 0;
+                while(i < size)
+                {
+                    if(nq.domain.get(i).getKey() == xCo && nq.domain.get(i).getValue() == yCo)
+                    {
+                        nq.domain.remove(i);
+                        size--;
+                    }
+                    else
+                        i++;
+                }
+                if(xCo + 1 < n && yCo + 1 < n)
+                {
+                    xCo++;
+                    yCo++;
+                }
+                else   
+                    break;
+            }
+        }
+        for(i = 0; i < n; i++)
+        {
+            Queen nq = queens.get(i);
+            System.out.println("This is Queen " + i + "'s domain after getting rid of lower diagonal");
+            nq.printDomain();
+        }
 
-	public void inference(Queen q) {
-		int nextQueen;
-		int row = q.xPosition;
-		int col = q.yPosition;
-		int i;
-		int xCoordinate, yCoordinate;
-		for(nextQueen = unassignedIndex; nextQueen < n; nextQueen++)
-		{
-			Queen nq = queens.get(nextQueen);
-			int size = nq.domain.size();
-			i = 0;
-			
-			while(i < size)
-			{
-				if(nq.domain.get(i).getKey() == row)
-				{
-					nq.domain.remove(i);
-					size--;
-					continue;
-				}
+        if(row - 1 >= 0 && col + 1 < n)
+        {
+            int xCo = row - 1;
+            int yCo = col + 1;
+            for(nextQueen = unassignedIndex; nextQueen < n; nextQueen++)
+            {
+                Queen nq = queens.get(nextQueen);
+                while(yCo != nq.yPosition)
+                {
+                    xCo--;
+                    yCo++;
+                }
+                int size = nq.domain.size();
+                i = 0;
+                while(i < size)
+                {
+                    if(nq.domain.get(i).getKey() == xCo && nq.domain.get(i).getValue() == yCo)
+                    {
+                        nq.domain.remove(i);
+                        size--;
+                    }
+                    else
+                        i++;
+                }
+                if(xCo - 1 >= 0 && yCo + 1 < n)
+                {
+                    xCo--;
+                    yCo++;
+                }
+                else   
+                    break;
+            }
+        }
+        for(i = 0; i < n; i++)
+        {
+            Queen nq = queens.get(i);
+            System.out.println("This is Queen " + i + "'s domain after getting rid of upper diagonal");
+            nq.printDomain();
+        }
+    }
 
-				else
-					i++;
-			}
-		}
+    public boolean noFailures() {
+        int i;
+        for(i = unassignedIndex; i < n; i++)
+        {
+            Queen q = queens.get(i);
+            if(q.domain.size() == 0)
+                return false;
+        }
 
-		if(row + 1 < n && col + 1 < n)
-		{
-			xCoordinate = row + 1; yCoordinate = col + 1;
-			for(nextQueen = unassignedIndex; nextQueen < n; nextQueen++)
-			{
-				Queen nq = queens.get(nextQueen);
-				int size = nq.domain.size();
-				i = 0;
+        return true;
+    }
 
-				while(i < size)
-				{
-					if(nq.domain.get(i).getKey() == xCoordinate && nq.domain.get(i).getValue() == yCoordinate)
-					{
-						nq.domain.remove(i);
-						size--;
-						if(xCoordinate + 1 < n && yCoordinate + 1 < n)
-						{	
-							xCoordinate++;
-							yCoordinate++;
-							continue;
-						}
-						else
-							break;
-					}
-					else
-						i++;
-				}
-			}
-		}
+    public void resetDomains() {
+        int i, j;
+        for(i = unassignedIndex; i < n; i++)
+        {
+            Queen q = queens.get(i);
+            q.domain.clear();
+            for(j = 0; j < n; j++)
+            {
+                q.domain.add(new AbstractMap.SimpleEntry<>(j, q.yPosition));
+            }
+            System.out.println("This is Queen " + q.yPosition + "'s domain after resetting without inference");
+            q.printDomain();
+        }
 
-		if(row - 1 > -1 && col + 1 < n)
-		{
-			xCoordinate = row - 1; yCoordinate = col + 1;
-			for(nextQueen = unassignedIndex; nextQueen < n; nextQueen++)
-			{
-				Queen nq = queens.get(nextQueen);
-				int size = nq.domain.size();
-				i = 0;
+        for(i = 0; i < unassignedIndex - 1; i++)
+        {
+            Queen q = queens.get(i);
+            inference(q);
+        }
 
-				while(i < size)
-				{
-					if(nq.domain.get(i).getKey() == xCoordinate && nq.domain.get(i).getValue() == yCoordinate)
-					{
-						nq.domain.remove(i);
-						size--;
-						if(xCoordinate - 1 > -1 && yCoordinate + 1 < n)
-						{
-							xCoordinate--;
-							yCoordinate++;
-							continue;
-						}
-						else
-							break;
-					}
-					else
-						i++;
-				}
-			}
-		}
-	}
+        for(i = 0; i < n; i++)
+        {
+            Queen q = queens.get(i);
+            System.out.println("This is Queen " + q.yPosition + "'s domain after resetting with inference");
+            q.printDomain();
+        }
+    }
 
-	// check to see that no domains have been reduced
-	// to size 0
-	public boolean noFailure() {
-		int i;
-		for(i = unassignedIndex; i < n; i++)
-		{
-			Queen nq = queens.get(i);
-			if(nq.domain.size() == 0)
-				return false;
-		}
+    public boolean isComplete() {
+        int i;
+        for(i = 0; i < n; i++)
+        {
+            if(queens.get(i).xPosition == Integer.MAX_VALUE)
+                return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	public void resetDomains() {
-		int i, j;
-		for(i = unassignedIndex; i < n; i++)
-		{
-			Queen q = queens.get(i);
-			q.domain.clear();
-			for(j = 0; j < n; j++)
-			{
-				q.domain.add(new AbstractMap.SimpleEntry<>(j, i));
-			}
-		}
+    public void printSolutions() {
+        int i, j, size = solutions.size();
+        for(i = 0; i < size && i < 2 * n; i++)
+        {
+            ArrayList<Integer> solution = solutions.get(i);
+            System.out.println("Solution " + i);
+            for(j = 0; j < n; j++)
+            {
+                System.out.println("Queen " + j + " at position (" + solution.get(j) + ", " + j + ")");
+            }
+            System.out.println();
+        }
+    }
 
-		for(i = 0; i < unassignedIndex - 1; i++) 
-		{
-			Queen q = queens.get(i);
-			this.inference(q);
-		}
-	}
+    public void forwardChecking() {
+        int i;
+        Queen q = queens.get(unassignedIndex++);
+        for(i = 0; i < n; i++)
+        {
+            q.setXPosition(i);
+            inference(q);
+            if(noFailures())
+                forwardCheckingHelper();
+        }
 
-	public void forwardChecking() {
-		int i, j;
-		System.out.println("Initializing forwardChecking");
-		Queen q = queens.get(unassignedIndex++);
-		boolean result;
-		for(i = 0; i < 3; i++)
-		{
-			q.setPositionX(q.domain.get(i).getKey());
-			this.inference(q);
-			result = forwardCheckingHelper();
-			if(result)
-				printSolution();
-			else
-			{
-				unassignedIndex = 1;
-				printFailure();
-			}
+        printSolutions();
+    }
 
-			unassignedIndex = 1;
-			for(j = 1; j < n; j++)
-			{
-				Queen x = queens.get(j);
-				x.setPositionX(Integer.MAX_VALUE);
-				this.resetDomains();
-			}
-		}
-	}
+    public void forwardCheckingHelper() {
+        if(isComplete())
+        {
+            System.out.println("Found a solution!");
+            ArrayList<Integer> solution = new ArrayList<>();
+            int i;
+            for(i = 0; i < n; i++)
+            {
+                solution.add(queens.get(i).xPosition);
+            }
+            solutions.add(solution);
+            return;
+        }
+        int i, size;
+        System.out.println("Finding possible solutions for Queen " + unassignedIndex);
+        System.out.println("Here are the domains");
+        for(i = 0; i < n; i++)
+        {
+            Queen q = queens.get(i);
+            System.out.println("Queen " + q.yPosition + " has domains");
+            q.printDomain();
+        }
 
-	public boolean forwardCheckingHelper() {
-		int i, j, size;
-		System.out.println("In forwardChecking call with unassignedIndex: " + unassignedIndex + ". Here are the domains");
-		for(i = 0; i < n; i++)
-		{
-			Queen q = queens.get(i);
-			System.out.println("Queen " + i + " with xPosition: " + q.xPosition);
-			q.printDomain();
-		}
-		if(this.isComplete())
-			return true;
+        Queen q = queens.get(unassignedIndex++);
+        size = q.domain.size();
 
-		boolean result;
-
-		Queen q = queens.get(unassignedIndex++);
-		size = q.domain.size();
-
-		for(i = 0; i < size; i++)
-		{
-			q.setPositionX(q.domain.get(i).getKey());
-			this.inference(q);
-			if(this.noFailure())
-			{
-				result = forwardCheckingHelper();
-				if(result)
-				{
-					return true;
-				}
-			}
-			else
-			{
-				System.out.println("Failed on instance of queen " + q.yPosition + " with xPosition: " + q.xPosition);
-				this.resetDomains();
-			}
-		}
-
-		return false;
-	}
-
-	// make the loop iterating through the first column a separate function
-	// and make the recursive calls another function for the other column 
-	// assignments
-	// public boolean forwardChecking() {
-	// 	int i, j, size;
-	// 	System.out.println("In forwardChecking call with unassignedIndex: " + unassignedIndex + ". Here are the domains");
-	// 	for(i = 0; i < n; i++)
-	// 	{
-	// 		Queen q = queens.get(i);
-	// 		System.out.println("Queen " + i + " with xPosition: " + q.xPosition);
-	// 		q.printDomain();
-	// 	}
-	// 	if(this.isComplete()) {
-	// 		return true;
-	// 	}
-
-	// 	boolean result;
-
-	// 	Queen q = queens.get(unassignedIndex++);
-	// 	size = q.domain.size();
-	// 	for(i = 0; i < size; i++)
-	// 	{
-	// 		q.setPositionX(q.domain.get(i).getKey());
-	// 		this.inference(q);
-	// 		if(this.noFailure())
-	// 		{
-	// 			result = forwardChecking();
-	// 			if(result)
-	// 			{
-	// 				System.out.println("Printing solution with unassignedIndex: " + unassignedIndex);
-	// 				this.printSolution();
-	// 			}
-	// 		}
-	// 		else
-	// 		{
-	// 			System.out.println("Failed on instance of queen " + q.yPosition + " with xPosition: " + q.xPosition);
-	// 			this.resetDomains();
-	// 			System.out.println("This is unassignedIndex now: " + unassignedIndex + "\n");
-	// 		}
-	// 	}
-		
-	// 	this.printFailure();
-	// 	return false;
-	// }
+        for(i = 0; i < size; i++)
+        {
+            System.out.println("Assigning Queen " + q.yPosition + " xPosition" + q.domain.get(i).getKey());
+            q.setXPosition(q.domain.get(i).getKey());
+            inference(q);
+            if(noFailures())
+                forwardCheckingHelper();
+            else
+            {
+                System.out.println("SAD! Backtracking becuase Queen " + q.yPosition + " with xPosition " + q.xPosition + " failed the test!");
+                resetDomains();
+            }
+        }
+        unassignedIndex--;
+        resetDomains();
+        q.setXPosition(Integer.MAX_VALUE);
+        return;
+    }
 }
 
 // backtrack general algo
@@ -310,3 +275,8 @@ class QueenGraph {
 // whenever x is assigned, establish arc consistency for it
 // for each unassigned y, delete from y's domain any value that 
 // is inconsistent
+
+// MAC
+// after Xi is assigned, inference calls AC-3. 
+// no queue of arcs, just do arcs that are unassigned neighbors
+// of Xi
