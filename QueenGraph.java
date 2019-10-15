@@ -253,6 +253,102 @@ class QueenGraph {
         q.setXPosition(Integer.MAX_VALUE);
         return;
     }
+
+    public void initializeQueue(LinkedList<AbstractMap.SimpleEntry<Queen, Queen>> queue) {
+        int i, placedQueen = unassignedIndex - 1;
+        for(i = unassignedIndex; i < n; i++)
+        {
+            queue.add(new AbstractMap.SimpleEntry<>(queens.get(i), queens.get(placedQueen)));
+        }
+        int size = queue.size();
+        for(i = 0; i < size; i++)
+        {
+            System.out.print("At index " + i + ", queue has arc: (");
+            System.out.println(queue.get(i).getKey().yPosition + ", " + queue.get(i).getValue().yPosition + ")");
+        }
+    }
+
+    public boolean revise(AbstractMap.SimpleEntry<Queen, Queen> arc) {
+        boolean revised = false;
+        boolean consistent;
+        int i = 0, j, size = arc.getKey().domain.size();
+        while(i < size)
+        {
+            consistent = false;
+            int xjSize = arc.getValue().domain.size();
+            for(j = 0; j < xjSize; j++)
+            {
+                // if a value in this domain allows for Di to exist,
+                // set consistent = true
+                ;
+            }
+            if(!consistent) {
+                arc.getKey().domain.remove(i);
+                size--;
+                revised = true;
+            }
+            else
+                i++;
+        }
+        return revised;
+    }
+
+    // AC-3 returns false if inconsistency found true otherwise
+    public boolean ac3() {
+        LinkedList<AbstractMap.SimpleEntry<Queen, Queen>> queue = new LinkedList<>();
+        initializeQueue(queue);
+        
+        return true;
+    }
+
+    public void maintainingArcConsistency() {
+        if(isComplete())
+        {
+            System.out.println("Found a solution!");
+            ArrayList<Integer> solution = new ArrayList<>();
+            int i;
+            for(i = 0; i < n; i++)
+            {
+                solution.add(queens.get(i).xPosition);
+            }
+            solutions.add(solution);
+            return;
+        }
+
+        int i, size;
+        System.out.println("Finding possible solutions for Queen " + unassignedIndex);
+        System.out.println("Here are the domains");
+        for(i = 0; i < n; i++)
+        {
+            Queen q = queens.get(i);
+            System.out.println("Queen " + q.yPosition + " has domains");
+            q.printDomain();
+        }
+
+        Queen q = queens.get(unassignedIndex++);
+        size = q.domain.size();
+
+        for(i = 0; i < 1; i++)
+        {
+            System.out.println("Assigning Queen " + q.yPosition + " xPosition" + q.domain.get(i).getKey());
+            q.setXPosition(q.domain.get(i).getKey());
+            ac3();
+            if(noFailures())
+            {
+                maintainingArcConsistency();
+            }
+            else
+            {
+                System.out.println("SAD! Backtracking becuase Queen " + q.yPosition + " with xPosition " + q.xPosition + " failed the test!");
+                resetDomains();
+            }
+        }
+
+        unassignedIndex--;
+        resetDomains();
+        q.setXPosition(Integer.MAX_VALUE);
+        return;
+    }
 }
 
 // backtrack general algo

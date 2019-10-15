@@ -7,5 +7,7 @@ class NQueens {
 
         if(args[0].equals("FOR"))
             q.forwardChecking();
+        else
+            q.maintainingArcConsistency();
     }
 }
