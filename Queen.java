@@ -24,4 +24,13 @@ class Queen {
             System.out.println("<" + domain.get(i).getKey() + ", " + domain.get(i).getValue() + ">");
         System.out.println();
     }
+
+    public String retrieveDomain() {
+        int i, size = domain.size();
+        String s = "";
+        for(i = 0; i < size; i++)
+            s += "<" + domain.get(i).getKey() + ", " + domain.get(i).getValue() + ">\n";
+        s += "\n";
+        return s;
+    }
 }

@@ -1,3 +1,5 @@
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.*;
 
 class QueenGraph {
@@ -78,7 +80,7 @@ class QueenGraph {
                     xCo++;
                     yCo++;
                 }
-                else   
+                else
                     break;
             }
         }
@@ -118,7 +120,7 @@ class QueenGraph {
                     xCo--;
                     yCo++;
                 }
-                else   
+                else
                     break;
             }
         }
@@ -181,32 +183,53 @@ class QueenGraph {
         return true;
     }
 
-    public void printSolutions() {
+    public void printSolutions(FileOutputStream rfile) throws IOException {
         int i, j, size = solutions.size();
-        for(i = 0; i < size && i < 2 * n; i++)
+        String s = "";
+        for(i = 0; i < size; i++)
         {
             ArrayList<Integer> solution = solutions.get(i);
-            System.out.println("Solution " + i);
+            s += "Solution " + i + "\n";
             for(j = 0; j < n; j++)
             {
-                System.out.println("Queen " + j + " at position (" + solution.get(j) + ", " + j + ")");
+                s += "Queen " + j + " at position (" + solution.get(j) + ", " + j + ")\n";
             }
-            System.out.println();
+            s += "\n";
         }
+
+        rfile.write(s.getBytes());
     }
 
-    public void forwardChecking() {
+    public void printConstraintsToCFile(FileOutputStream cfile) throws IOException {
         int i;
+        String s = "Here are the domains\n";
+        for(i = 0; i < n; i++)
+        {
+            Queen q = queens.get(i);
+            s += "Queen " + q.yPosition + " has domain\n";
+            s += q.retrieveDomain();
+        }
+
+        cfile.write(s.getBytes());
+    }
+
+    public void forwardChecking(FileOutputStream cfile, FileOutputStream rfile) throws IOException {
+        int i;
+        printConstraintsToCFile(cfile);
         Queen q = queens.get(unassignedIndex++);
         for(i = 0; i < n; i++)
         {
             q.setXPosition(i);
             inference(q);
             if(noFailures())
+            {
                 forwardCheckingHelper();
+                if(solutions.size() == 2 * n)
+                    break;
+            }
         }
 
-        printSolutions();
+        printSolutions(rfile);
     }
 
     public void forwardCheckingHelper() {
@@ -241,7 +264,11 @@ class QueenGraph {
             q.setXPosition(q.domain.get(i).getKey());
             inference(q);
             if(noFailures())
+            {
                 forwardCheckingHelper();
+                if(solutions.size() == 2 * n)
+                    return;
+            }
             else
             {
                 System.out.println("SAD! Backtracking becuase Queen " + q.yPosition + " with xPosition " + q.xPosition + " failed the test!");
@@ -297,8 +324,65 @@ class QueenGraph {
     public boolean ac3() {
         LinkedList<AbstractMap.SimpleEntry<Queen, Queen>> queue = new LinkedList<>();
         initializeQueue(queue);
-        
+        int i;
+        while(queue.size != 0)
+        {
+            AbstractMap.SimpleEntry<Queen, Queen> arc = queue.poll();
+            if(revise(arc)
+            {
+                System.out.println("Hello!");
+                if(!noFailures())
+                    return false;
+            }
+        }
+
         return true;
+    }
+
+    public void maintainingArcConsistency(FileOutputStream cfile, FileOutputStream rfile) throws IOException {
+        printConstraintsToCFile(cfile);
+        int i;
+        Queen q = queens.get(unassignedIndex++);
+        for(i = 0; i < n; i++)
+        {
+            q.setXPosition(i);
+            boolean result = ac3();
+            System.out.println(result);
+        }
+        printSolutions(rfile);
+    }
+
+    public void maintainingArcConsistencyHelper() {
+        if(isComplete())
+        {
+            System.out.println("Found a solution!");
+            ArrayList<Integer> solution = new ArrayList<>();
+            int i;
+            for(i = 0; i < n; i++)
+            {
+                solution.add(queens.get(i).xPosition);
+            }
+            solutions.add(solution);
+            return;
+        }
+
+        int i, size;
+        System.out.println("Finding possible solutions for Queen " + unassignedIndex);
+        System.out.println("Here are the domains");
+        for(i = 0; i < n; i++)
+        {
+            Queen q = queens.get(i);
+            System.out.println("Queen " + q.yPosition + " has domains");
+            q.printDomain();
+        }
+
+        Queen q = queens.get(unassignedIndex++);
+        size = q.domain.size();
+
+        for(i = 0; i < size; i++)
+        {
+
+        }
     }
 
     public void maintainingArcConsistency() {
@@ -336,6 +420,8 @@ class QueenGraph {
             if(noFailures())
             {
                 maintainingArcConsistency();
+                if(solutions.size() == 2 * n)
+                    return;
             }
             else
             {
@@ -369,10 +455,10 @@ class QueenGraph {
 
 // forward checking
 // whenever x is assigned, establish arc consistency for it
-// for each unassigned y, delete from y's domain any value that 
+// for each unassigned y, delete from y's domain any value that
 // is inconsistent
 
 // MAC
-// after Xi is assigned, inference calls AC-3. 
+// after Xi is assigned, inference calls AC-3.
 // no queue of arcs, just do arcs that are unassigned neighbors
 // of Xi
