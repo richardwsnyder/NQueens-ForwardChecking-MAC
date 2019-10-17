@@ -180,6 +180,10 @@ class QueenGraph {
             s += "Queen " + q.yPosition + " has domain\n";
             s += q.retrieveDomain();
         }
+        s += "The constraints are the problem for two queens Xi and Xy are as follows\n";
+        s += "1. Xi and Xy cannot be in the same row\n";
+        s += "2. If Xy's row is below Xi's, then Xy's row cannot be equal to Xi.row + diff(Xi.col, Xy.col). This would cause Xy to be in the lower diagonal path of Xi.\n";
+        s += "3. If Xy's row is above Xi's, then Xy's row cannot be equal to Xi.row - diff(Xi.col, Xy.col). This would cause Xy to be in the upper diagonal path of Xi.\n";
 
         cfile.write(s.getBytes());
     }
@@ -252,27 +256,19 @@ class QueenGraph {
         {
             queue.add(new AbstractMap.SimpleEntry<>(queens.get(i), queens.get(placedQueen)));
         }
-        int size = queue.size();
-        for(i = 0; i < size; i++)
-        {
-            System.out.print("At index " + i + ", queue has arc: (");
-            System.out.println(queue.get(i).getKey().yPosition + ", " + queue.get(i).getValue().yPosition + ")");
-        }
     }
 
     public boolean revise(AbstractMap.SimpleEntry<Queen, Queen> arc) {
-        System.out.println("We are now comparing Queen " + arc.getKey().yPosition + " with Queen " + arc.getValue().yPosition);
         boolean revised = false;
         boolean consistent;
         int i = 0, j, size = arc.getKey().domain.size();
         
         // for each x in Di
-        while(i < 1)
+        while(i < size)
         {
             int dYSize = arc.getValue().domain.size();
             int Xirow = arc.getKey().domain.get(i).getKey();
             int Xicol = arc.getKey().yPosition;
-            System.out.println("Queen " + Xicol + " is testing row " + Xirow);
             consistent = false;
             // test values of y for x in Di,
             // where y is the row
@@ -280,40 +276,20 @@ class QueenGraph {
             {
                 int Xyrow = arc.getValue().domain.get(j).getKey();
                 int Xycol = arc.getValue().yPosition;
-                System.out.println("Queen " + Xycol + " is testing row " + Xyrow);
                 if(Xyrow != Xirow)
                 {
-                    System.out.println("Queen " + Xicol + " passed the row test! You must be above or below Queen " + Xycol);
                     int diffY = Xicol - Xycol;
                     // test the lower diagonal from Xy
                     if(Xirow > Xyrow)
                     {
-                        System.out.println("You are below Queen " + Xycol);
-                        if(Xirow == Xyrow + diffY)
-                        {
-                            System.out.println("You are in the diagonal path of Queen " + Xycol);
-                        }
-                        else
-                        {
-                            System.out.println("You are not in the diagonal path of Queen " + Xycol);
+                        if(Xirow != Xyrow + diffY)
                             consistent = true;
-                            break;
-                        }
                     }
                     // test the upper diagonal from Xy
                     else
                     {
-                        System.out.println("You are above Queen " + Xycol);
-                        if(Xirow == Xyrow - diffY)
-                        {
-                            System.out.println("You are in the diagonal path of Queen " + Xycol);
-                        }
-                        else
-                        {
-                            System.out.println("You are not in the diagonal path of Queen " + Xycol);
+                        if(Xirow != Xyrow - diffY)
                             consistent = true;
-                            break;
-                        }
                     }
                 }
             }
@@ -327,6 +303,7 @@ class QueenGraph {
             else
                 i++;
         }
+        
         return revised;
     }
 
@@ -340,13 +317,10 @@ class QueenGraph {
             AbstractMap.SimpleEntry<Queen, Queen> arc = queue.poll();
             if(revise(arc))
             {
-                System.out.println("Hello!");
                 if(arc.getKey().domain.size() == 0)
                     return false;
-                for(i = unassignedIndex + 1; i < n; i++)
-                {
+                for(i = arc.getKey().yPosition + 1; i < n; i++)
                     queue.add(new AbstractMap.SimpleEntry<>(queens.get(i), arc.getKey()));
-                }
             }
         }
 
@@ -355,26 +329,48 @@ class QueenGraph {
 
     public void maintainingArcConsistency(FileOutputStream cfile, FileOutputStream rfile) throws IOException {
         printConstraintsToCFile(cfile);
-        int i;
+        int i, j;
         Queen q = queens.get(unassignedIndex++);
-        for(i = 0; i < 1; i++)
+        long start = System.nanoTime();
+        for(i = 0; i < n; i++)
         {
             q.setXPosition(i);
-            boolean result = ac3();
-            if(result)
+            resetDomains();
+            int size = q.domain.size();
+            j = 0;
+            while(j < size)
+            {
+                if(q.domain.get(j).getKey() != i)
+                {
+                    q.domain.remove(j);
+                    size--;
+                }
+                else
+                    j++;
+            }
+            ac3();
+            if(noFailures())
             {
                 maintainingArcConsistencyHelper();
                 if(solutions.size() == 2*n)
                     break;
             }
+            q.domain.clear();
+            for(j = 0; j < n; j++)
+            {
+                q.domain.add(new AbstractMap.SimpleEntry<>(j, 0));
+            }
         }
+        long finish = System.nanoTime();
+        long timeElapsed = finish - start;
+        long timeElapsedMS = timeElapsed / 1000000;
+        System.out.println("Time to calculate " + solutions.size() + " solutions: " + timeElapsedMS + "ms");
         printSolutions(rfile);
     }
 
     public void maintainingArcConsistencyHelper() {
         if(isComplete())
         {
-            System.out.println("Found a solution!");
             ArrayList<Integer> solution = new ArrayList<>();
             int i;
             for(i = 0; i < n; i++)
@@ -386,86 +382,24 @@ class QueenGraph {
         }
 
         int i, size;
-        System.out.println("Finding possible solutions for Queen " + unassignedIndex);
-        System.out.println("Here are the domains");
-        for(i = 0; i < n; i++)
-        {
-            Queen q = queens.get(i);
-            System.out.println("Queen " + q.yPosition + " has domains");
-            q.printDomain();
-        }
 
         Queen q = queens.get(unassignedIndex++);
         size = q.domain.size();
 
         for(i = 0; i < size; i++)
         {
-            System.out.println("Assigning Queen " + q.yPosition + " xPosition " + q.domain.get(i).getKey());
             q.setXPosition(q.domain.get(i).getKey());
             boolean result = ac3();
             if(result)
             {
+                inference(q);
                 maintainingArcConsistencyHelper();
                 if(solutions.size() == 2*n)
                     return;
             }
             else
-            {
-                System.out.println("SAD! Backtracking becuase Queen " + q.yPosition + " with xPosition " + q.xPosition + " failed the test!");
                 resetDomains();
-            }
         }
-        unassignedIndex--;
-        resetDomains();
-        q.setXPosition(Integer.MAX_VALUE);
-        return;
-    }
-
-    public void maintainingArcConsistency() {
-        if(isComplete())
-        {
-            System.out.println("Found a solution!");
-            ArrayList<Integer> solution = new ArrayList<>();
-            int i;
-            for(i = 0; i < n; i++)
-            {
-                solution.add(queens.get(i).xPosition);
-            }
-            solutions.add(solution);
-            return;
-        }
-
-        int i, size;
-        System.out.println("Finding possible solutions for Queen " + unassignedIndex);
-        System.out.println("Here are the domains");
-        for(i = 0; i < n; i++)
-        {
-            Queen q = queens.get(i);
-            System.out.println("Queen " + q.yPosition + " has domains");
-            q.printDomain();
-        }
-
-        Queen q = queens.get(unassignedIndex++);
-        size = q.domain.size();
-
-        for(i = 0; i < 1; i++)
-        {
-            System.out.println("Assigning Queen " + q.yPosition + " xPosition" + q.domain.get(i).getKey());
-            q.setXPosition(q.domain.get(i).getKey());
-            ac3();
-            if(noFailures())
-            {
-                maintainingArcConsistency();
-                if(solutions.size() == 2 * n)
-                    return;
-            }
-            else
-            {
-                System.out.println("SAD! Backtracking becuase Queen " + q.yPosition + " with xPosition " + q.xPosition + " failed the test!");
-                resetDomains();
-            }
-        }
-
         unassignedIndex--;
         resetDomains();
         q.setXPosition(Integer.MAX_VALUE);
