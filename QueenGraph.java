@@ -7,18 +7,22 @@ class QueenGraph {
     ArrayList<Queen> queens;
     ArrayList<ArrayList<Integer>> solutions;
     int unassignedIndex;
+    int numberBacktracks;
 
+    // initialize the QueenGraph object
     public QueenGraph(int numQueens) {
         n = numQueens;
         unassignedIndex = 0;
         queens = new ArrayList<>();
         solutions = new ArrayList<>();
+        numberBacktracks = 0;
 
         int i;
         for(i = 0; i < numQueens; i++)
             queens.add(new Queen(n, i));
     }
 
+    // inference method for forward checking
     private void inference(Queen q) {
         int row = q.xPosition;
         int col = q.yPosition;
@@ -26,6 +30,8 @@ class QueenGraph {
         int nextQueen;
         int i;
 
+        // get rid of domain values that are in the same row as the just
+        // assigned queen
         for(nextQueen = unassignedIndex; nextQueen < n; nextQueen++)
         {
             Queen nq = queens.get(nextQueen);
@@ -43,6 +49,8 @@ class QueenGraph {
             }
         }
 
+        // get rid of domain values that are in the lower diagonal path of
+        // the just assigned queen
         if(row + 1 < n && col + 1 < n)
         {
             int xCo = row + 1;
@@ -77,6 +85,8 @@ class QueenGraph {
             }
         }
 
+        // get rid of domain values that are in the upper diagonal path of
+        // the just assigned queen
         if(row - 1 >= 0 && col + 1 < n)
         {
             int xCo = row - 1;
@@ -112,6 +122,8 @@ class QueenGraph {
         }
     }
 
+    // check to make sure that no variables have been
+    // reduced to a domain size of 0
     public boolean noFailures() {
         int i;
         for(i = unassignedIndex; i < n; i++)
@@ -124,8 +136,12 @@ class QueenGraph {
         return true;
     }
 
+    // reset the domains of unassigned queens if
+    // backtracking is required
     public void resetDomains() {
         int i, j;
+        // clear the domains of queens that haven't been
+        // assigned yet
         for(i = unassignedIndex; i < n; i++)
         {
             Queen q = queens.get(i);
@@ -136,6 +152,8 @@ class QueenGraph {
             }
         }
 
+        // add back the domain constraints for
+        // queens that HAVE been assigned
         for(i = 0; i < unassignedIndex - 1; i++)
         {
             Queen q = queens.get(i);
@@ -143,17 +161,23 @@ class QueenGraph {
         }
     }
 
+    // check to see if you've assigned each
+    // queen to a position on the board
     public boolean isComplete() {
         int i;
         for(i = 0; i < n; i++)
         {
+            // if any queen hasn't been assigned (their xPosition is MAX_VALUE).
+            // return false
             if(queens.get(i).xPosition == Integer.MAX_VALUE)
                 return false;
         }
 
+        // otherwise, all queens have been assigned, return true
         return true;
     }
 
+    // print solutions to output file
     public void printSolutions(FileOutputStream rfile) throws IOException {
         int i, j, size = solutions.size();
         String s = "";
@@ -171,6 +195,7 @@ class QueenGraph {
         rfile.write(s.getBytes());
     }
 
+    // print constraints, variables, and domains to output file
     public void printConstraintsToCFile(FileOutputStream cfile) throws IOException {
         int i;
         String s = "Here are the domains\n";
@@ -188,11 +213,15 @@ class QueenGraph {
         cfile.write(s.getBytes());
     }
 
+    // do forward checking on queen 0, call recursive
+    // function for all future queens
     public void forwardChecking(FileOutputStream cfile, FileOutputStream rfile) throws IOException {
         int i;
         printConstraintsToCFile(cfile);
         long start = System.nanoTime();
         Queen q = queens.get(unassignedIndex++);
+
+        // go through all n possible placements for queen 0
         for(i = 0; i < n; i++)
         {
             q.setXPosition(i);
@@ -208,10 +237,12 @@ class QueenGraph {
         long timeElapsed = finish - start;
         long timeElapsedMS = timeElapsed / 1000000;
         System.out.println("Time to calculate " + solutions.size() + " solutions: " + timeElapsedMS + "ms");
+        System.out.println("Number of backtracking steps taken: " + numberBacktracks);
 
         printSolutions(rfile);
     }
 
+    // recursive function for forward iteration
     public void forwardCheckingHelper() {
         if(isComplete())
         {
@@ -229,6 +260,7 @@ class QueenGraph {
         Queen q = queens.get(unassignedIndex++);
         size = q.domain.size();
 
+        // assign next queen based off of its current domain
         for(i = 0; i < size; i++)
         {
             q.setXPosition(q.domain.get(i).getKey());
@@ -239,33 +271,49 @@ class QueenGraph {
                 if(solutions.size() == 2 * n)
                     return;
             }
+
+            // if there are conflicts (i.e. a queen has domain size 0),
+            // revert this assignment and move onto the next one
             else
             {
                 resetDomains();
+                numberBacktracks++;
             }
         }
+
+        // once you're done going through the domain,
+        // reset this variables assignment, reset the domains,
+        // and return
         unassignedIndex--;
         resetDomains();
         q.setXPosition(Integer.MAX_VALUE);
         return;
     }
 
+    // initialize the queue for each recursive call
+    // to ac3
     public void initializeQueue(LinkedList<AbstractMap.SimpleEntry<Queen, Queen>> queue) {
+        // placedQueen is the queen you just assigned
         int i, placedQueen = unassignedIndex - 1;
+        // add the arcs between the just assigned queen
+        // and its neighbors (all queens after it)
         for(i = unassignedIndex; i < n; i++)
         {
             queue.add(new AbstractMap.SimpleEntry<>(queens.get(i), queens.get(placedQueen)));
         }
     }
 
+    // revise function that ac3 calls
     public boolean revise(AbstractMap.SimpleEntry<Queen, Queen> arc) {
         boolean revised = false;
         boolean consistent;
         int i = 0, j, size = arc.getKey().domain.size();
-        
+
         // for each x in Di
         while(i < size)
         {
+            // get Xy's domain size and
+            // the possible assignment information for Xi
             int dYSize = arc.getValue().domain.size();
             int Xirow = arc.getKey().domain.get(i).getKey();
             int Xicol = arc.getKey().yPosition;
@@ -276,16 +324,22 @@ class QueenGraph {
             {
                 int Xyrow = arc.getValue().domain.get(j).getKey();
                 int Xycol = arc.getValue().yPosition;
+                // first test that two queens wouldn't be
+                // in the same row
                 if(Xyrow != Xirow)
                 {
                     int diffY = Xicol - Xycol;
                     // test the lower diagonal from Xy
+                    // if you pass the test, you've found an
+                    // assignment that is consistent
                     if(Xirow > Xyrow)
                     {
                         if(Xirow != Xyrow + diffY)
                             consistent = true;
                     }
                     // test the upper diagonal from Xy
+                    // if you pass the test, you've found an
+                    // assignment that is consistent
                     else
                     {
                         if(Xirow != Xyrow - diffY)
@@ -293,7 +347,9 @@ class QueenGraph {
                     }
                 }
             }
-            
+
+            // if there is no consistency between Xi and Xy
+            // for the assignment (x, y), remove x from Xi's domain
             if(!consistent)
             {
                 arc.getKey().domain.remove(i);
@@ -303,11 +359,11 @@ class QueenGraph {
             else
                 i++;
         }
-        
+
         return revised;
     }
 
-    // AC-3 returns false if inconsistency found true otherwise
+    // ac3 implementation
     public boolean ac3() {
         LinkedList<AbstractMap.SimpleEntry<Queen, Queen>> queue = new LinkedList<>();
         initializeQueue(queue);
@@ -327,6 +383,10 @@ class QueenGraph {
         return true;
     }
 
+    // MAC
+    // If assigning queen 0 to a position doesn't cause
+    // a failure in the other queens, call the recursive
+    // function and you WILL find a solution
     public void maintainingArcConsistency(FileOutputStream cfile, FileOutputStream rfile) throws IOException {
         printConstraintsToCFile(cfile);
         int i, j;
@@ -338,6 +398,10 @@ class QueenGraph {
             resetDomains();
             int size = q.domain.size();
             j = 0;
+
+            // need to remove from queen 0's domain
+            // any value that isn't the assignment
+            // in order for ac3 to work
             while(j < size)
             {
                 if(q.domain.get(j).getKey() != i)
@@ -355,6 +419,8 @@ class QueenGraph {
                 if(solutions.size() == 2*n)
                     break;
             }
+
+            // give queen 0 its domain back
             q.domain.clear();
             for(j = 0; j < n; j++)
             {
@@ -365,9 +431,11 @@ class QueenGraph {
         long timeElapsed = finish - start;
         long timeElapsedMS = timeElapsed / 1000000;
         System.out.println("Time to calculate " + solutions.size() + " solutions: " + timeElapsedMS + "ms");
+        System.out.println("Number of backtracking steps taken: " + numberBacktracks);
         printSolutions(rfile);
     }
 
+    // recursive MAC function
     public void maintainingArcConsistencyHelper() {
         if(isComplete())
         {
@@ -390,6 +458,11 @@ class QueenGraph {
         {
             q.setXPosition(q.domain.get(i).getKey());
             boolean result = ac3();
+
+            // if you're inside the recursive function,
+            // you know that there is a solution,
+            // so no need to check that a domain has been reduced to 0,
+            // just have to check the return value of ac3
             if(result)
             {
                 inference(q);
@@ -397,38 +470,19 @@ class QueenGraph {
                 if(solutions.size() == 2*n)
                     return;
             }
+
+            // this assignment didn't work, so backtrack
             else
+            {
                 resetDomains();
+                numberBacktracks++;
+            }
         }
+
+        // reset assignment
         unassignedIndex--;
         resetDomains();
         q.setXPosition(Integer.MAX_VALUE);
         return;
     }
 }
-
-// backtrack general algo
-// backtrack(empty set assignment) {
-// 	if assignment is complete then return assignment
-// 	var = select-unassigned-variable
-//	for each value in order-domain-values(var, assignment)
-//		if value is consistent with assignment
-//			add var = value to assignment
-//			inferences = Inference(var, value)
-//			if inferences != failure
-//				add inferences to assignment
-//				result = backtrack(assignment)
-//				if result != failure
-//					return result
-//		remove var = value and inferences from assignment
-
-
-// forward checking
-// whenever x is assigned, establish arc consistency for it
-// for each unassigned y, delete from y's domain any value that
-// is inconsistent
-
-// MAC
-// after Xi is assigned, inference calls AC-3.
-// no queue of arcs, just do arcs that are unassigned neighbors
-// of Xi
